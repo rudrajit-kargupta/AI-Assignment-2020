@@ -53,7 +53,7 @@ def getFitness(individual, X, y):
                           from_logits=True),
                       metrics=['accuracy'])
 
-        nn_model.fit(X_subset, y, epochs=1)
+        nn_model.fit(X_subset, y, epochs=300)
         test_loss, test_acc = nn_model.evaluate(X_subset,  y, verbose=2)
         return test_acc
     else:
