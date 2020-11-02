@@ -53,7 +53,7 @@ def getFitness(individual, X, y):
                           from_logits=True),
                       metrics=['accuracy'])
 
-        nn_model.fit(X_subset, y, epochs=300)
+        nn_model.fit(X_subset, y, epochs=100)
         test_loss, test_acc = nn_model.evaluate(X_subset,  y, verbose=2)
         return test_acc
     else:
@@ -73,7 +73,7 @@ def populate(features, size=50):
     return np.array(initial)
 
 
-def mutate(population):
+def mutate(population, mutation_rate):
     # n = np.random.randint(0, len(population))
     # p = population[np.random.randint(0, len(population))]
     # l = np.random.randint(0, len(p))
@@ -84,7 +84,7 @@ def mutate(population):
 
     for p in population:
         p_list = p.tolist()
-        und = np.random.normal(0, 1)
+        und = np.random.choice(2, 1, p = [1 - mutation_rate, mutation_rate])
         if(und > 0):
             m_index = np.random.randint(0, len(p_list))
             if p_list[m_index] == 0:
@@ -98,10 +98,10 @@ def mutate(population):
     return np.array(mutated_pop)
 
 
-def cross(population, size=50):
-    new_pop = []
+def cross(population, crossover_rate):
+    new_pop = population.tolist()
 
-    for _ in range(size):
+    for _ in range(int(crossover_rate*len(population))):
         p = population[np.random.randint(0, len(population))].tolist()
         m = population[np.random.randint(0, len(population))].tolist()
         entity = p[0:len(p)//2]
@@ -113,19 +113,28 @@ def cross(population, size=50):
     return np.array(new_pop)
 
 
-def geneticAlgorithm(X, y, n_population, n_generation):
+def geneticAlgorithm(X, y, n_population, n_generation, mutation_rate, crossover_rate):
 
-	population = populate(X.columns, n_population)
-	for _ in range(n_generation):
-		population=cross(population, 50)
-		population=mutate(population)
-
-	return population
-
+    population = populate(X.columns, n_population)
+    a, prev_fitness, b = bestIndividual(population, X, y)
+    
+    for i in range(n_generation):
+        population = mutate(population, mutation_rate)
+        population = cross(population, crossover_rate)
+        a, current_fitness, b = bestIndividual(population, X, y)
+        if(i < int(n_generation/2)):
+            continue
+        #break if not more than 1% change in fitness values
+        if(current_fitness - prev_fitness < 0.01*prev_fitness):
+            # print("i at break:" + str(i) + "\n")
+            break
+        prev_fitness = current_fitness
+    return population 
 def bestIndividual(hof, X, y):
     """
     Get the best individual
     """
+    _individual = []
     maxAccurcy = 0.0
     for individual in hof:
     	individual = individual.tolist()
@@ -140,9 +149,12 @@ def bestIndividual(hof, X, y):
     return _individual, maxAccurcy ,_individualHeader
 
 # dataFramePath = input("Please enter csv path\n")
-n_pop = 10
-n_gen = 30
-dataFramePath="/home/rudraj1t/eContent/AI/Coding Assignment/labelled-combined.csv"
+n_pop = 50
+n_gen = 5
+
+mutation_rate = 0.03
+crossover_rate = 0.05
+dataFramePath = "/home/rudraj1t/eContent/AI/Coding Assignment/labelled-combined.csv"
 df = pd.read_csv(f"{dataFramePath}")
 # df=pd.read_csv("labelled-combined.csv")
 # print(df.head)
@@ -158,7 +170,7 @@ X = df.iloc[:, :-1]
 individual = [1 for i in range(len(X.columns))]
 print("Accuracy with all features: \t" + str(getFitness(individual, X, y)) + "\n")
 
-hof = geneticAlgorithm(X, y, n_pop, n_gen)
+hof = geneticAlgorithm(X, y, n_pop, n_gen, mutation_rate, crossover_rate)
 
 # select the best individual
 individual, accuracy, header = bestIndividual(hof, X, y)
